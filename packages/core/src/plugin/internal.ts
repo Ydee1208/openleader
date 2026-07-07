@@ -7,6 +7,7 @@ import { Effect, Layer, Scope } from "effect"
 import { AgentV2 } from "../agent"
 import { Catalog } from "../catalog"
 import { CommandV2 } from "../command"
+import { ControlPlaneMoveSession } from "../control-plane/move-session"
 import { Config } from "../config"
 import { ConfigAgentPlugin } from "../config/plugin/agent"
 import { ConfigCommandPlugin } from "../config/plugin/command"
@@ -16,6 +17,7 @@ import { ConfigReferencePlugin } from "../config/plugin/reference"
 import { ConfigSkillPlugin } from "../config/plugin/skill"
 import { EventV2 } from "../event"
 import { FileSystem } from "../filesystem"
+import { Git } from "../git"
 import { FSUtil } from "../fs-util"
 import { Global } from "../global"
 import { Integration } from "../integration"
@@ -23,13 +25,16 @@ import { Location } from "../location"
 import { ModelsDev } from "../models-dev"
 import { Npm } from "../npm"
 import { PluginV2 } from "../plugin"
+import { ProjectV2 } from "../project"
 import { Reference } from "../reference"
+import { SessionStore } from "../session/store"
 import { SkillV2 } from "../skill"
 import { State } from "../state"
 import { FetchHttpClient, HttpClient } from "effect/unstable/http"
 import { AgentPlugin } from "./agent"
 import { CommandPlugin } from "./command"
 import { ModelsDevPlugin } from "./models-dev"
+import { Plugin as OpenLeaderPlugin } from "./openleader"
 import { ProviderPlugins } from "./provider"
 import { SkillPlugin } from "./skill"
 import { VariantPlugin } from "./variant"
@@ -39,8 +44,10 @@ export type Requirements =
   | Catalog.Service
   | CommandV2.Service
   | Config.Service
+  | ControlPlaneMoveSession.Service
   | EventV2.Service
   | FileSystem.Service
+  | Git.Service
   | FSUtil.Service
   | Global.Service
   | HttpClient.HttpClient
@@ -48,7 +55,9 @@ export type Requirements =
   | Location.Service
   | ModelsDev.Service
   | Npm.Service
+  | ProjectV2.Service
   | Reference.Service
+  | SessionStore.Service
   | SkillV2.Service
 
 export interface Plugin<R = never> {
@@ -74,7 +83,11 @@ const layer = Layer.effectDiscard(
     const events = yield* EventV2.Service
     const fs = yield* FSUtil.Service
     const filesystem = yield* FileSystem.Service
+    const git = yield* Git.Service
     const global = yield* Global.Service
+    const moveSession = yield* ControlPlaneMoveSession.Service
+    const project = yield* ProjectV2.Service
+    const sessionStore = yield* SessionStore.Service
     const http = yield* HttpClient.HttpClient
     const skill = yield* SkillV2.Service
     const reference = yield* Reference.Service
@@ -95,8 +108,12 @@ const layer = Layer.effectDiscard(
               Effect.provideService(Npm.Service, npm),
               Effect.provideService(EventV2.Service, events),
               Effect.provideService(FSUtil.Service, fs),
+              Effect.provideService(Git.Service, git),
               Effect.provideService(FileSystem.Service, filesystem),
               Effect.provideService(Global.Service, global),
+              Effect.provideService(ControlPlaneMoveSession.Service, moveSession),
+              Effect.provideService(ProjectV2.Service, project),
+              Effect.provideService(SessionStore.Service, sessionStore),
               Effect.provideService(HttpClient.HttpClient, http),
               Effect.provideService(SkillV2.Service, skill),
               Effect.provideService(Reference.Service, reference),
@@ -119,6 +136,7 @@ const layer = Layer.effectDiscard(
         yield* add(ConfigExternalPlugin.Plugin)
         yield* add(ConfigProviderPlugin.Plugin)
         yield* add(VariantPlugin.Plugin)
+        yield* add(OpenLeaderPlugin)
       }),
     ).pipe(Effect.withSpan("PluginInternal.boot"), Effect.forkScoped({ startImmediately: true }))
   }),
@@ -145,7 +163,11 @@ export const node = makeLocationNode({
     EventV2.node,
     FSUtil.node,
     FileSystem.node,
+    Git.node,
     Global.node,
+    ControlPlaneMoveSession.node,
+    ProjectV2.node,
+    SessionStore.node,
     httpClient,
     SkillV2.node,
     Reference.node,
