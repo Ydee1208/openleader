@@ -238,24 +238,26 @@ const layer = Layer.effect(
           tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
           time: { created: now, updated: now },
         })
-        const projected = yield* events
-          .publish(SessionV1.Event.Created, { sessionID, info }, { location: input.location })
-          .pipe(
-            Effect.as({ type: "created" } as const),
-            Effect.catchDefect((defect) => {
-              if (!(defect instanceof SessionProjector.SessionAlreadyProjected)) {
-                return Effect.die(defect)
-              }
-              // Concurrent creation lost the projection race. The existing Session identity wins.
-              return store
-                .get(sessionID)
-                .pipe(
-                  Effect.flatMap((session) =>
-                    session ? Effect.succeed({ type: "existing", session } as const) : Effect.die(defect),
-                  ),
-                )
-            }),
-          )
+        // Initialize per-location services before the session event publishes
+        // so location-scoped plugins (e.g. openleader) can register listeners in time.
+        const projected = yield* Effect.provide(
+          events.publish(SessionV1.Event.Created, { sessionID, info }, { location: input.location }),
+          locations.get(input.location),
+        ).pipe(
+          Effect.as({ type: "created" } as const),
+          Effect.catchDefect((defect) => {
+            if (!(defect instanceof SessionProjector.SessionAlreadyProjected)) {
+              return Effect.die(defect)
+            }
+            return store
+              .get(sessionID)
+              .pipe(
+                Effect.flatMap((session) =>
+                  session ? Effect.succeed({ type: "existing", session } as const) : Effect.die(defect),
+                ),
+              )
+          }),
+        )
         if (projected.type === "existing") return projected.session
         // TODO: Restore recorded sessions onto replacement synchronized workspaces in a future API slice.
         return yield* result.get(sessionID).pipe(Effect.orDie)

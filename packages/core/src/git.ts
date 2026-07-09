@@ -115,6 +115,7 @@ export interface Interface {
     readonly create: (input: {
       repository: Repository
       directory: AbsolutePath
+      ref?: string
     }) => Effect.Effect<Repository, WorktreeError>
     readonly remove: (input: {
       repository: Repository
@@ -879,13 +880,12 @@ const layer = Layer.effect(
     const worktreeCreate = Effect.fn("Git.worktree.create")(function* (input: {
       repository: Repository
       directory: AbsolutePath
+      ref?: string
     }) {
-      yield* worktreeRun(
-        "create",
-        input.repository,
-        ["worktree", "add", "--detach", input.directory, "HEAD"],
-        input.directory,
-      )
+      const args = input.ref
+        ? ["worktree", "add", input.directory, input.ref]
+        : ["worktree", "add", "--detach", input.directory, "HEAD"]
+      yield* worktreeRun("create", input.repository, args, input.directory)
       const repository = yield* discover(input.directory)
       if (repository) return repository
       return yield* new WorktreeError({

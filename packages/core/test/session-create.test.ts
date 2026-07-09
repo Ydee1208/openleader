@@ -24,8 +24,10 @@ import { SessionEvent } from "@opencode-ai/core/session/event"
 import { SessionTable } from "@opencode-ai/core/session/sql"
 import { SessionStore } from "@opencode-ai/core/session/store"
 import { WorkspaceV2 } from "@opencode-ai/core/workspace"
+import { LocationServiceMap } from "@opencode-ai/core/location-service-map"
 import { testEffect } from "./lib/effect"
 import { tmpdir } from "./fixture/tmpdir"
+import { noopLocationServiceMap } from "./fixture/location-map"
 
 const projects = Layer.succeed(
   ProjectV2.Service,
@@ -41,6 +43,7 @@ const it = testEffect(
     [
       [ProjectV2.node, projects],
       [SessionExecution.node, SessionExecution.noopLayer],
+      [LocationServiceMap.node, noopLocationServiceMap],
     ],
   ),
 )
