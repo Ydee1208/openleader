@@ -7,7 +7,7 @@ import { Effect, Layer, Scope } from "effect"
 import { AgentV2 } from "../agent"
 import { Catalog } from "../catalog"
 import { CommandV2 } from "../command"
-import { ControlPlaneMoveSession } from "../control-plane/move-session"
+import { MoveSession } from "../control-plane/move-session"
 import { Config } from "../config"
 import { ConfigAgentPlugin } from "../config/plugin/agent"
 import { ConfigCommandPlugin } from "../config/plugin/command"
@@ -28,6 +28,7 @@ import { PluginV2 } from "../plugin"
 import { ProjectV2 } from "../project"
 import { Reference } from "../reference"
 import { SessionStore } from "../session/store"
+import { SessionV2 } from "../session"
 import { SkillV2 } from "../skill"
 import { State } from "../state"
 import { FetchHttpClient, HttpClient } from "effect/unstable/http"
@@ -44,7 +45,7 @@ export type Requirements =
   | Catalog.Service
   | CommandV2.Service
   | Config.Service
-  | ControlPlaneMoveSession.Service
+  | MoveSession.Service
   | EventV2.Service
   | FileSystem.Service
   | Git.Service
@@ -58,6 +59,7 @@ export type Requirements =
   | ProjectV2.Service
   | Reference.Service
   | SessionStore.Service
+  | SessionV2.Service
   | SkillV2.Service
 
 export interface Plugin<R = never> {
@@ -85,9 +87,10 @@ const layer = Layer.effectDiscard(
     const filesystem = yield* FileSystem.Service
     const git = yield* Git.Service
     const global = yield* Global.Service
-    const moveSession = yield* ControlPlaneMoveSession.Service
+    const moveSession = yield* MoveSession.Service
     const project = yield* ProjectV2.Service
     const sessionStore = yield* SessionStore.Service
+    const sessionV2 = yield* SessionV2.Service
     const http = yield* HttpClient.HttpClient
     const skill = yield* SkillV2.Service
     const reference = yield* Reference.Service
@@ -111,9 +114,10 @@ const layer = Layer.effectDiscard(
               Effect.provideService(Git.Service, git),
               Effect.provideService(FileSystem.Service, filesystem),
               Effect.provideService(Global.Service, global),
-              Effect.provideService(ControlPlaneMoveSession.Service, moveSession),
+              Effect.provideService(MoveSession.Service, moveSession),
               Effect.provideService(ProjectV2.Service, project),
               Effect.provideService(SessionStore.Service, sessionStore),
+              Effect.provideService(SessionV2.Service, sessionV2),
               Effect.provideService(HttpClient.HttpClient, http),
               Effect.provideService(SkillV2.Service, skill),
               Effect.provideService(Reference.Service, reference),
@@ -138,7 +142,7 @@ const layer = Layer.effectDiscard(
         yield* add(VariantPlugin.Plugin)
         yield* add(OpenLeaderPlugin)
       }),
-    ).pipe(Effect.withSpan("PluginInternal.boot"), Effect.forkScoped({ startImmediately: true }))
+    ).pipe(Effect.withSpan("PluginInternal.boot"))
   }),
 )
 
@@ -165,9 +169,10 @@ export const node = makeLocationNode({
     FileSystem.node,
     Git.node,
     Global.node,
-    ControlPlaneMoveSession.node,
+    MoveSession.node,
     ProjectV2.node,
     SessionStore.node,
+    SessionV2.node,
     httpClient,
     SkillV2.node,
     Reference.node,
