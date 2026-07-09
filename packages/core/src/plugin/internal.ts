@@ -1,6 +1,6 @@
 export * as PluginInternal from "./internal"
 
-import { makeLocationNode } from "../effect/app-node"
+import { makeLocationNode, type LocationNode } from "../effect/app-node"
 import { httpClient } from "../effect/app-node-platform"
 import type { PluginContext } from "@opencode-ai/plugin/v2/effect"
 import { Effect, Layer, Scope } from "effect"
@@ -151,7 +151,7 @@ export const locationLayer = layer.pipe(
   Layer.provideMerge(FetchHttpClient.layer),
 )
 
-export const node = makeLocationNode({
+export const node: LocationNode<never, never> = makeLocationNode({
   name: "plugin-internal",
   layer,
   deps: [
